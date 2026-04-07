@@ -1,24 +1,25 @@
 const express = require("express");
 const cors = require("cors");
-
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 const callers = {
-  "+19738565029": "Basheer",
-  "+19736346265": "Blue Neel",
-  "+13474241577": "Miko"
+  "9738565029": "Basheer",
+  "9736346265": "Blue Neel",
+  "3474241577": "Miko"
 };
 
 app.post("/lookup", (req, res) => {
-  const phone = req.body.phone;
-
+  console.log("Incoming phone:", req.body.phone);
+  
+  let phone = req.body.phone || "";
+  phone = phone.replace(/^\+1/, "").replace(/^\+/, "").trim();
+  
+  console.log("Cleaned phone:", phone);
+  
   const name = callers[phone] || "there";
-
-  res.json({
-    name: name
-  });
+  res.json({ name: name });
 });
 
 app.get("/", (req, res) => {
@@ -26,7 +27,6 @@ app.get("/", (req, res) => {
 });
 
 const port = process.env.PORT || 3000;
-
 app.listen(port, () => {
   console.log("Server running on port " + port);
 });
