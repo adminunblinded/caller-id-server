@@ -88,7 +88,13 @@ wss.on("connection", async (twilioWs) => {
               type: "conversation_initiation_client_data",
               dynamic_variables: { name: name },
               conversation_config_override: {
-                tts: { optimize_streaming_latency: 4 }
+                agent: {
+                  first_message: `Hey ${name}, what's your zone action?`
+                },
+                tts: {
+                  optimize_streaming_latency: 4,
+                  output_format: "ulaw_8000"
+                }
               }
             }));
           });
@@ -96,6 +102,7 @@ wss.on("connection", async (twilioWs) => {
           elevenWs.on("message", (elevenData) => {
             try {
               const parsed = JSON.parse(elevenData);
+              console.log("ElevenLabs message type:", parsed.type);
               if (parsed.type === "audio" && parsed.audio?.chunk) {
                 const twilioMsg = {
                   event: "media",
