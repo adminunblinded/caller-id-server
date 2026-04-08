@@ -92,8 +92,7 @@ wss.on("connection", async (twilioWs) => {
                   first_message: `Hey ${name}, what's your zone action?`
                 },
                 tts: {
-                  optimize_streaming_latency: 4,
-                  output_format: "ulaw_8000"
+                  optimize_streaming_latency: 4
                 }
               }
             }));
