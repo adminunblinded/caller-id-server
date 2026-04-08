@@ -39,4 +39,40 @@ app.post("/incoming", async (req, res) => {
       }
     );
 
-    const signedUrl = res
+    const signedUrl = response.data.signed_url;
+
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Connect>
+    <Stream url="${signedUrl}">
+      <Parameter name="name" value="${name}"/>
+    </Stream>
+  </Connect>
+</Response>`;
+
+    res.type("text/xml");
+    res.send(twiml);
+  } catch (err) {
+    console.error("Error:", err.message);
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say>Sorry, something went wrong. Please try again.</Say>
+</Response>`;
+    res.type("text/xml");
+    res.send(twiml);
+  }
+});
+
+app.post("/lookup", (req, res) => {
+  const name = lookupName(req.body.phone);
+  res.json({ name });
+});
+
+app.get("/", (req, res) => {
+  res.send("Caller ID API running");
+});
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log("Server running on port " + port);
+});
