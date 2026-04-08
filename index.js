@@ -65,14 +65,12 @@ wss.on("connection", async (twilioWs) => {
     try {
       const msg = JSON.parse(data);
 
-      // First message from Twilio contains the callSid via custom parameter
       if (msg.event === "start") {
         const callSid = msg.start?.customParameters?.callSid || "";
         streamSid = msg.start?.streamSid;
         name = callData[callSid]?.name || "there";
         console.log("Stream started - CallSid:", callSid, "Name:", name);
 
-        // Now connect to ElevenLabs
         try {
           const response = await fetch(
             `https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${AGENT_ID}`,
@@ -88,14 +86,16 @@ wss.on("connection", async (twilioWs) => {
             console.log("Connected to ElevenLabs, sending name:", name);
             elevenWs.send(JSON.stringify({
               type: "conversation_initiation_client_data",
-              dynamic_variables: { name: name }
+              dynamic_variables: { name: name },
+              conversation_config_override: {
+                tts: { optimize_streaming_latency: 4 }
+              }
             }));
           });
 
           elevenWs.on("message", (elevenData) => {
             try {
               const parsed = JSON.parse(elevenData);
-              // Forward audio from ElevenLabs back to Twilio
               if (parsed.type === "audio" && parsed.audio?.chunk) {
                 const twilioMsg = {
                   event: "media",
@@ -128,7 +128,6 @@ wss.on("connection", async (twilioWs) => {
         }
       }
 
-      // Forward audio from Twilio to ElevenLabs
       if (msg.event === "media" && elevenWs?.readyState === WebSocket.OPEN) {
         elevenWs.send(JSON.stringify({
           user_audio_chunk: Buffer.from(msg.media.payload, "base64").toString("base64")
