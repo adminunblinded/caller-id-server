@@ -130,7 +130,10 @@ wss.on("connection", async (twilioWs) => {
 
       if (msg.event === "media" && elevenWs?.readyState === WebSocket.OPEN) {
         elevenWs.send(JSON.stringify({
-          user_audio_chunk: Buffer.from(msg.media.payload, "base64").toString("base64")
+          type: "audio",
+          audio: {
+            chunk: msg.media.payload
+          }
         }));
       }
 
