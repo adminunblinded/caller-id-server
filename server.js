@@ -1,8 +1,17 @@
 const express = require("express");
 const cors = require("cors");
+const twilio = require("twilio");
+const axios = require("axios");
+
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+const AGENT_ID = process.env.AGENT_ID;
 
 const callers = {
   "9738565029": "Basheer",
@@ -15,25 +24,49 @@ function lookupName(phone) {
   return callers[phone] || "there";
 }
 
-// Original lookup endpoint (keep this)
-app.post("/lookup", (req, res) => {
-  console.log("Incoming phone:", req.body.phone);
-  const name = lookupName(req.body.phone);
-  console.log("Returning name:", name);
-  res.json({ name: name });
+app.post("/incoming", async (req, res) => {
+  const callerPhone = req.body.From || "";
+  const name = lookupName(callerPhone);
+  console.log("Incoming call from:", callerPhone, "Name:", name);
+
+  try {
+    const response = await axios.post(
+      `https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${AGENT_ID}`,
+      {},
+      {
+        headers: {
+          "xi-api-key": ELEVENLABS_API_KEY
+        }
+      }
+    );
+
+    const signedUrl = response.data.signed_url;
+
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Connect>
+    <Stream url="${signedUrl}">
+      <Parameter name="name" value="${name}"/>
+    </Stream>
+  </Connect>
+</Response>`;
+
+    res.type("text/xml");
+    res.send(twiml);
+  } catch (err) {
+    console.error("Error:", err.message);
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say>Sorry, something went wrong. Please try again.</Say>
+</Response>`;
+    res.type("text/xml");
+    res.send(twiml);
+  }
 });
 
-// New pre-call webhook endpoint for dynamic variables
-app.post("/get-name", (req, res) => {
-  console.log("Pre-call webhook body:", req.body);
-  const phone = req.body.caller_id || req.body.phone || "";
-  const name = lookupName(phone);
-  console.log("Injecting name:", name);
-  res.json({
-    dynamic_variables: {
-      name: name
-    }
-  });
+app.post("/lookup", (req, res) => {
+  const name = lookupName(req.body.phone);
+  res.json({ name });
 });
 
 app.get("/", (req, res) => {
