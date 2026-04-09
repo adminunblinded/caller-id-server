@@ -11,9 +11,6 @@ app.use(express.urlencoded({ extended: true }));
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const AGENT_ID = process.env.AGENT_ID;
-const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
-const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER;
 
 const callers = {
   "9738565029": "Basheer",
@@ -28,39 +25,12 @@ function lookupName(phone) {
 
 const callData = {};
 
-// ── OUTBOUND: trigger a call ──────────────────────────────
-app.post("/call", async (req, res) => {
-  const toPhone = req.body.phone;
-  if (!toPhone) return res.status(400).json({ error: "phone required" });
-
-  const name = lookupName(toPhone);
-  const host = req.headers.host;
-
-  try {
-    const twilio = require("twilio");
-    const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
-
-    const call = await client.calls.create({
-      to: toPhone,
-      from: TWILIO_PHONE_NUMBER,
-      url: `https://${host}/incoming?name=${encodeURIComponent(name)}`
-    });
-    console.log("Outbound call started to:", toPhone, "Name:", name, "SID:", call.sid);
-    res.json({ success: true, callSid: call.sid, name });
-  } catch (err) {
-    console.error("Outbound call error:", err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── INCOMING: handles both inbound + outbound ─────────────
 app.post("/incoming", (req, res) => {
   const callerPhone = req.body.From || "";
   const callSid = req.body.CallSid || "";
+  const name = lookupName(callerPhone);
+  console.log("Incoming call from:", callerPhone, "Name:", name, "SID:", callSid);
 
-  const name = req.query.name || lookupName(callerPhone);
-
-  console.log("Call connected - Phone:", callerPhone, "Name:", name, "SID:", callSid);
   callData[callSid] = { name };
 
   const host = req.headers.host;
@@ -81,7 +51,6 @@ app.get("/", (req, res) => {
   res.send("Caller ID API running");
 });
 
-// ── WebSocket server ──────────────────────────────────────
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, path: "/media-stream" });
 
