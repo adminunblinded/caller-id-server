@@ -3,7 +3,6 @@ const cors = require("cors");
 const http = require("http");
 const WebSocket = require("ws");
 const fetch = require("node-fetch");
-const twilio = require("twilio");
 
 const app = express();
 app.use(cors());
@@ -35,10 +34,12 @@ app.post("/call", async (req, res) => {
   if (!toPhone) return res.status(400).json({ error: "phone required" });
 
   const name = lookupName(toPhone);
-  const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
   const host = req.headers.host;
 
   try {
+    const twilio = require("twilio");
+    const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+
     const call = await client.calls.create({
       to: toPhone,
       from: TWILIO_PHONE_NUMBER,
@@ -57,7 +58,6 @@ app.post("/incoming", (req, res) => {
   const callerPhone = req.body.From || "";
   const callSid = req.body.CallSid || "";
 
-  // Outbound passes name as query param, inbound looks it up
   const name = req.query.name || lookupName(callerPhone);
 
   console.log("Call connected - Phone:", callerPhone, "Name:", name, "SID:", callSid);
